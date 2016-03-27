@@ -3,6 +3,7 @@ import codecs, datetime, glob, os, re, subprocess
 
 # ---------- CONSTANTS ----------
 config_filename = "configuration.ini"
+DETACHED_PROCESS = 0x00000010 # http://stackoverflow.com/questions/89228/calling-an-external-command-in-python#2251026
 # ----------/CONSTANTS ----------
 
 # ---------- FUNCTIONS ----------
@@ -106,7 +107,7 @@ if foundFiles:
 	os.chdir(config_pdfsam_dir)
 	os.system(pdfsam_command)
 	# Call PDF Viewer
-	subprocess.call([config_pdfvwr_path, output_file_path])
+	subprocess.Popen([config_pdfvwr_path, output_file_path], creationflags=DETACHED_PROCESS)
 else:
 	print("No files to concat have been found.")
 
