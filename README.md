@@ -38,6 +38,7 @@ It takes all the single PDFs from a directory, merges them using PDFsam and open
 * You can configure...
 	* the path where the PDFs are taken from and the result is put into
 	* the file marker, of course (you do not have to use the `CONCATENATED_BY_BENNAUX_SCRIPT` string)
+	* the amount of days you want to look into the past, just in case you forgot to run the script at one day
 	* the location and executable of PDFsam
 	* the executable of the PDF viewer you want to use.      
 

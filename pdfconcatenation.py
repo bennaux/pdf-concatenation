@@ -1,4 +1,5 @@
 from configparser import SafeConfigParser
+from datetime import date, timedelta
 import codecs, datetime, glob, os, re, subprocess
 
 # ---------- CONSTANTS ----------
@@ -7,11 +8,26 @@ DETACHED_PROCESS = 0x00000010 # http://stackoverflow.com/questions/89228/calling
 # ----------/CONSTANTS ----------
 
 # ---------- FUNCTIONS ----------
-# Load the PDF files of today, sorted backwards
+# Load the PDF files of the current day and, if configured,
+# as many days into the past as specified at the config
+# file.
+# basepath: The base path from config
+# RETURN: The PDF files of the specified amount of days,
+# sorted backwards. 
+def load_file_list(basepath):
+	current_file_list = []
+	i = 0
+	while i <= config_backdays:
+		current_filename_pattern = (date.today() - timedelta(i)).strftime('%Y-%m-%d-*.pdf')
+		current_file_list = current_file_list + load_file_list_by_pattern(basepath, current_filename_pattern)
+		i += 1
+	return current_file_list
+
+# Load the PDF files by pattern, sorted backwards
 # basepath: The base path from config
 # filename_pattern: The regEx to find the PDFs
-# RETURN: The PDF files of today, sorted backwards.
-def load_file_list(basepath, filename_pattern):
+# RETURN: The PDF files that match, sorted backwards.
+def load_file_list_by_pattern(basepath, filename_pattern):
 	fileslist = glob.glob(basepath + "\\" + filename_pattern)
 	fileslist.sort(reverse = True)
 	return fileslist;
@@ -43,7 +59,11 @@ def pad_number(number):
 #         includes the path.
 def generate_filepath(basepath, fileslist, filemarker):
 	pattern = '.*' + datetime.datetime.now().strftime("%Y-%m-%d-") + "([0-9][0-9]).*"
-	lastNumber = pad_number(int(re.sub(pattern, '\\1', fileslist[0]))+1)
+	try:
+		lastNumber = pad_number(int(re.sub(pattern, '\\1', fileslist[0]))+1)
+		# Will throw a ValueError if the newest file does not carry today's date
+	except ValueError:
+		lastNumber = "01"
 	return basepath + "\\" + datetime.datetime.now().strftime("%Y-%m-%d-") + str(lastNumber) + "-" + filemarker + ".pdf"
 
 # Appends a file name to the PDFSAM command line (at its beginning)
@@ -70,6 +90,7 @@ except FileNotFoundError:
 try:
 	config_basepath = parser.get("pdf_settings", "basepath")
 	config_filemarker = parser.get("pdf_settings", "filemarker")
+	config_backdays = int(parser.get("pdf_settings", "backdays"))
 	config_pdfsam_jar = parser.get("program_settings", "pdfsam_jar")
 	config_pdfsam_dir = parser.get("program_settings", "pdfsam_dir")
 	config_pdfvwr_path = parser.get("program_settings", "pdfvwr_executable")
@@ -81,11 +102,8 @@ except:
 filenamenumber = None
 foundFiles = False
 
-# Build regEx pattern for searching
-filenamePattern = datetime.datetime.now().strftime("%Y-%m-%d-*.pdf")
-
 # Load files list
-fileslist = load_file_list(config_basepath, filenamePattern)
+fileslist = load_file_list(config_basepath)
 
 # Iterate over files and add them to the PDFsam command line
 pdfsam_command = ""
@@ -95,6 +113,8 @@ for filename in fileslist:
 	if not foundthemarker:
 		foundFiles = True
 		pdfsam_command = append_filename(pdfsam_command, filename)
+	if foundthemarker:
+		break
 
 if foundFiles:
 	# Finalize PDFsam command
